@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sequence</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --felt: #1a3a2a;
+      --felt-light: #1f4532;
+      --felt-dark: #112218;
+      --gold: #c9a84c;
+      --gold-light: #e8c96a;
+      --gold-dim: #7a6030;
+      --red-chip: #c0392b;
+      --red-chip-shine: #e74c3c;
+      --blue-chip: #1a6fa0;
+      --blue-chip-shine: #2980b9;
+      --red-team: #8b1a1a;
+      --blue-team: #1a3a6b;
+      --card-bg: #faf6ee;
+      --card-border: #d4c89a;
+      --text-primary: #f0e6cc;
+      --text-dim: #8a9a8a;
+      --glass: rgba(255,255,255,0.04);
+      --shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--felt-dark);
+      color: var(--text-primary);
+      font-family: 'DM Sans', sans-serif;
+      overflow-x: hidden;
+    }
+
+    body {
+      background:
+          radial-gradient(ellipse at 20% 20%, rgba(201,168,76,0.06) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 80%, rgba(26,58,42,0.8) 0%, transparent 50%),
+          repeating-linear-gradient(
+              45deg,
+              transparent,
+              transparent 2px,
+              rgba(255,255,255,0.01) 2px,
+              rgba(255,255,255,0.01) 4px
+          ),
+          var(--felt-dark);
+      min-height: 100vh;
+    }
+
+    /* ── SCREENS ── */
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: flex; }
+
+    /* ══ CONNECT SCREEN ══ */
+    #screen-connect {
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 48px;
+    }
+
+    .logo {
+      text-align: center;
+    }
+    .logo h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(48px, 8vw, 96px);
+      font-weight: 900;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 50%, var(--gold-dim) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      filter: drop-shadow(0 4px 16px rgba(201,168,76,0.3));
+    }
+    .logo p {
+      font-size: 13px;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-top: 8px;
+    }
+
+    .connect-card {
+      background: var(--glass);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: 16px;
+      padding: 40px 48px;
+      width: min(480px, 92vw);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(201,168,76,0.1);
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .field label {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      font-weight: 500;
+    }
+    .field input, .field select {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--text-primary);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,168,76,0.1);
+    }
+    .field select option { background: #1a2a1e; }
+
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
+      border: none;
+      border-radius: 8px;
+      color: #1a1a1a;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 4px 16px rgba(201,168,76,0.3);
+    }
+    .btn-primary:hover { opacity: 0.9; box-shadow: 0 6px 24px rgba(201,168,76,0.4); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    /* ══ LOBBY SCREEN ══ */
+    #screen-lobby {
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      gap: 32px;
+    }
+
+    .lobby-header {
+      text-align: center;
+    }
+    .lobby-header h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+    }
+    .lobby-header p {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    .teams-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      width: min(760px, 96vw);
+    }
+
+    .team-panel {
+      border-radius: 12px;
+      padding: 24px;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      border: 1px solid;
+      position: relative;
+      overflow: hidden;
+    }
+    .team-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0.06;
+      pointer-events: none;
+    }
+    .team-panel.red {
+      background: linear-gradient(135deg, rgba(139,26,26,0.3), rgba(80,10,10,0.2));
+      border-color: rgba(192,57,43,0.4);
+    }
+    .team-panel.red::before { background: radial-gradient(circle at top left, #c0392b, transparent); }
+    .team-panel.blue {
+      background: linear-gradient(135deg, rgba(26,58,107,0.3), rgba(10,30,70,0.2));
+      border-color: rgba(26,111,160,0.4);
+    }
+    .team-panel.blue::before { background: radial-gradient(circle at top left, #1a6fa0, transparent); }
+
+    .team-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .team-title .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .red .dot { background: var(--red-chip-shine); box-shadow: 0 0 8px var(--red-chip); }
+    .blue .dot { background: var(--blue-chip-shine); box-shadow: 0 0 8px var(--blue-chip); }
+    .team-title span.count { font-size: 13px; color: var(--text-dim); font-family: 'DM Sans', sans-serif; font-weight: 400; }
+
+    .player-list {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .player-tag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .player-tag.me { background: rgba(201,168,76,0.1); color: var(--gold); }
+    .player-tag .avatar {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .team-panel.red .avatar { background: var(--red-chip); color: white; }
+    .team-panel.blue .avatar { background: var(--blue-chip); color: white; }
+
+    .btn-team {
+      padding: 10px 16px;
+      border: 1px solid;
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: transparent;
+    }
+    .btn-team.red {
+      border-color: rgba(192,57,43,0.6);
+      color: #e74c3c;
+    }
+    .btn-team.red:hover { background: rgba(192,57,43,0.15); }
+    .btn-team.blue {
+      border-color: rgba(26,111,160,0.6);
+      color: #2980b9;
+    }
+    .btn-team.blue:hover { background: rgba(26,111,160,0.15); }
+
+    .lobby-footer {
+      width: min(760px, 96vw);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn-start {
+      width: 100%;
+      max-width: 360px;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
+      border: none;
+      border-radius: 10px;
+      color: #1a1a1a;
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 20px rgba(201,168,76,0.3);
+    }
+    .btn-start:hover:not(:disabled) { box-shadow: 0 6px 28px rgba(201,168,76,0.45); transform: translateY(-1px); }
+    .btn-start:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+    .lobby-hint {
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+    }
+
+    /* ══ GAME SCREEN ══ */
+    #screen-game {
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      gap: 12px;
+      min-height: 100vh;
+    }
+
+    .status-bar {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      background: var(--glass);
+      border: 1px solid rgba(201,168,76,0.15);
+      border-radius: 10px;
+      backdrop-filter: blur(8px);
+    }
+    .status-turn {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-dim);
+    }
+    .status-turn.my-turn { color: var(--gold); font-weight: 600; }
+    .status-turn.my-turn::before { content: '▶ '; }
+    .status-winner {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      color: var(--gold);
+      text-align: center;
+      width: 100%;
+      letter-spacing: 0.05em;
+    }
+    .score-display {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .score-item { display: flex; align-items: center; gap: 6px; }
+    .score-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .score-dot.red { background: var(--red-chip-shine); }
+    .score-dot.blue { background: var(--blue-chip-shine); }
+
+    /* ── BOARD ── */
+    .board-wrapper {
+      position: relative;
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 3px;
+      background: rgba(0,0,0,0.4);
+      padding: 6px;
+      border-radius: 10px;
+      border: 2px solid rgba(201,168,76,0.2);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(201,168,76,0.1);
+      width: min(640px, 96vw);
+      aspect-ratio: 1;
+    }
+
+    .cell {
+      background: var(--card-bg);
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.15s, filter 0.15s;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      aspect-ratio: 1;
+    }
+    .cell:hover { transform: scale(1.06); box-shadow: 0 4px 12px rgba(0,0,0,0.4); z-index: 2; }
+    .cell.corner {
+      background: linear-gradient(135deg, #c9a84c, #7a6030);
+      border-color: var(--gold);
+      cursor: default;
+    }
+    .cell.corner:hover { transform: none; }
+    .cell.highlight { box-shadow: 0 0 0 2px var(--gold), 0 4px 12px rgba(201,168,76,0.4); z-index: 3; }
+    .cell.occupied { cursor: default; }
+    .cell.occupied:hover { transform: none; box-shadow: none; }
+
+    .card-rank {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(8px, 1.4vw, 13px);
+      font-weight: 700;
+      line-height: 1;
+      color: #1a1a1a;
+    }
+    .card-suit {
+      font-size: clamp(9px, 1.5vw, 14px);
+      line-height: 1;
+    }
+    .card-suit.red { color: #c0392b; }
+    .card-suit.black { color: #1a1a1a; }
+
+    .star-icon {
+      font-size: clamp(14px, 2.5vw, 22px);
+      color: white;
+      text-shadow: 0 0 8px rgba(255,255,255,0.5);
+    }
+
+    .chip {
+      position: absolute;
+      width: 58%;
+      height: 58%;
+      border-radius: 50%;
+      top: 5%; left: 50%;
+      transform: translateX(-50%);
+      box-shadow: inset 0 -2px 5px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.35), 0 3px 8px rgba(0,0,0,0.45);
+      pointer-events: none;
+      animation: chipDrop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes chipDrop {
+      from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+      to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+    }
+    .chip.RED {
+      background: radial-gradient(circle at 35% 30%, var(--red-chip-shine), var(--red-chip) 60%, #8b1a1a);
+    }
+    .chip.BLUE {
+      background: radial-gradient(circle at 35% 30%, var(--blue-chip-shine), var(--blue-chip) 60%, #0d3d5e);
+    }
+    /* When a chip is present, show card info in bottom-left corner */
+    .cell.has-chip { justify-content: flex-end; align-items: flex-start; padding: 2px 3px; }
+    .cell.has-chip .card-rank { font-size: clamp(6px, 1vw, 11px); color: #1a1a1a; }
+    .cell.has-chip .card-suit { font-size: clamp(7px, 1.1vw, 12px); }
+
+    /* ── HAND ── */
+    .hand-section {
+      width: min(640px, 96vw);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .hand-label {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-align: center;
+    }
+    #hand {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .card-in-hand {
+      width: clamp(54px, 8vw, 72px);
+      height: clamp(78px, 11.5vw, 104px);
+      background: var(--card-bg);
+      border: 2px solid var(--card-border);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      cursor: pointer;
+      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s, border-color 0.15s;
+      position: relative;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      user-select: none;
+    }
+    .card-in-hand:hover { transform: translateY(-12px) scale(1.05); box-shadow: 0 12px 24px rgba(0,0,0,0.5); }
+    .card-in-hand.selected {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px var(--gold), 0 -16px 32px rgba(201,168,76,0.3);
+      transform: translateY(-16px) scale(1.06);
+    }
+    .card-in-hand .rank {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(13px, 2vw, 18px);
+      font-weight: 700;
+      color: #1a1a1a;
+      line-height: 1;
+    }
+    .card-in-hand .suit-sym {
+      font-size: clamp(14px, 2.2vw, 20px);
+      line-height: 1;
+    }
+    .card-in-hand .suit-sym.red { color: #c0392b; }
+    .card-in-hand .suit-sym.black { color: #1a1a1a; }
+    .card-in-hand.jack-card { background: linear-gradient(160deg, #faf6ee, #f0e8d0); }
+    .card-in-hand .jack-label {
+      font-size: clamp(7px, 1vw, 9px);
+      letter-spacing: 0.05em;
+      color: #666;
+      text-align: center;
+      line-height: 1.2;
+      padding: 0 4px;
+    }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: rgba(20,30,20,0.95);
+      border: 1px solid rgba(201,168,76,0.4);
+      border-radius: 10px;
+      padding: 12px 24px;
+      font-size: 14px;
+      color: var(--text-primary);
+      backdrop-filter: blur(12px);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 1000;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── DISCARD BUTTON ── */
+    .btn-discard {
+      padding: 8px 20px;
+      background: transparent;
+      border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 6px;
+      color: var(--text-dim);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      align-self: center;
+    }
+    .btn-discard:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-discard:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    @media (max-width: 500px) {
+      .teams-container { grid-template-columns: 1fr; }
+      .connect-card { padding: 28px 24px; }
+    }
+
+    /* ── CHAT ── */
+    #chat-panel {
+      position: fixed;
+      bottom: 0; right: 24px;
+      width: 300px;
+      background: rgba(14, 24, 16, 0.97);
+      border: 1px solid rgba(201,168,76,0.25);
+      border-bottom: none;
+      border-radius: 10px 10px 0 0;
+      box-shadow: -4px 0 32px rgba(0,0,0,0.5);
+      display: none;
+      flex-direction: column;
+      z-index: 500;
+      backdrop-filter: blur(16px);
+      overflow: hidden;
+    }
+    #chat-panel.visible { display: flex; }
+
+    #chat-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: rgba(201,168,76,0.08);
+      border-bottom: 1px solid rgba(201,168,76,0.15);
+      cursor: pointer;
+      user-select: none;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--gold);
+      transition: background 0.2s;
+    }
+    #chat-header:hover { background: rgba(201,168,76,0.13); }
+    #chat-title { flex: 1; }
+    #chat-toggle-icon { font-size: 10px; transition: transform 0.2s; }
+    #chat-panel.collapsed #chat-toggle-icon { transform: rotate(180deg); }
+    #chat-panel.collapsed #chat-messages,
+    #chat-panel.collapsed #chat-input-row { display: none; }
+
+    #chat-badge {
+      background: #e74c3c;
+      color: white;
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    #chat-badge.hidden { display: none; }
+
+    #chat-messages {
+      height: 220px;
+      overflow-y: auto;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      scroll-behavior: smooth;
+    }
+    #chat-messages::-webkit-scrollbar { width: 4px; }
+    #chat-messages::-webkit-scrollbar-track { background: transparent; }
+    #chat-messages::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.3); border-radius: 2px; }
+
+    .chat-msg {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      animation: msgIn 0.2s ease;
+    }
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .chat-msg .msg-sender {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--gold);
+    }
+    .chat-msg.mine .msg-sender { color: #7cb8e8; text-align: right; }
+    .chat-msg .msg-text {
+      font-size: 13px;
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.05);
+      border-radius: 0 8px 8px 8px;
+      padding: 6px 10px;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .chat-msg.mine .msg-text {
+      background: rgba(26,111,160,0.25);
+      border-radius: 8px 0 8px 8px;
+      text-align: right;
+    }
+    .chat-msg.system .msg-sender { display: none; }
+    .chat-msg.system .msg-text {
+      background: transparent;
+      color: var(--text-dim);
+      font-size: 11px;
+      text-align: center;
+      font-style: italic;
+      padding: 2px 0;
+    }
+    .chat-msg.emoji-only .msg-text {
+      font-size: 2rem;
+    }
+
+    #chat-input-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border-top: 1px solid rgba(201,168,76,0.1);
+    }
+
+    #emoji-toggle {
+      border: 1px solid rgba(201,168,76,0.3);
+      background: rgba(201,168,76,0.1);
+      border-radius: 6px;
+      padding: 5px 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    #emoji-toggle:hover {
+      background: rgba(201,168,76,0.25);
+      border-color: var(--gold);
+    }
+
+    .dots-icon {
+      font-size: 12px;
+      font-weight: bold;
+      color: var(--gold);
+      letter-spacing: 1px;
+      pointer-events: none;
+    }
+
+    #emoji-picker {
+      position: absolute;
+      bottom: 45px;
+      right: 40px;
+
+      display: flex;
+      gap: 6px;
+      padding: 6px 8px;
+
+      background: #111;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+    }
+
+    #emoji-picker button {
+      border: none;
+      background: transparent;
+      font-size: 18px;
+      cursor: pointer;
+      transition: transform .15s ease;
+    }
+
+    #emoji-picker button:hover {
+      transform: scale(1.2);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    #chat-input {
+      flex: 1;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: var(--text-primary);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #chat-input:focus { border-color: var(--gold); }
+    #chat-send {
+      background: rgba(201,168,76,0.15);
+      border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 6px;
+      color: var(--gold);
+      font-size: 16px;
+      padding: 0 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #chat-send:hover { background: rgba(201,168,76,0.25); }
+  </style>
+</head>
+<body>
+
+<!-- ══ CONNECT ══ -->
+<div id="screen-connect" class="screen active">
+  <div class="logo">
+    <h1>Sequence</h1>
+    <p>Стратегическая настольная игра</p>
+  </div>
+  <div class="connect-card">
+    <div class="field-group">
+      <div class="field">
+        <label>Ваш никнейм</label>
+        <input type="text" id="inp-name" placeholder="Введите имя..." maxlength="24">
+      </div>
+      <div class="field">
+        <label>ID комнаты</label>
+        <input type="text" id="inp-lobby" value="room1" maxlength="32">
+      </div>
+      <div class="field">
+        <label>Режим игры</label>
+        <select id="inp-mode">
+          <option value="4">2 × 2 — четыре игрока</option>
+          <option value="6">3 × 3 — шесть игроков</option>
+        </select>
+      </div>
+      <button class="btn-primary" id="btn-connect" onclick="connect()">Войти в лобби</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LOBBY ══ -->
+<div id="screen-lobby" class="screen">
+  <div class="lobby-header">
+    <h2 id="lobby-title">Комната</h2>
+    <p id="lobby-subtitle">Ожидание игроков...</p>
+  </div>
+
+  <div class="teams-container">
+    <div class="team-panel red">
+      <div class="team-title">
+        <span class="dot"></span>
+        Красная команда
+        <span class="count" id="red-count">(0)</span>
+      </div>
+      <div class="player-list" id="red-players"></div>
+      <button class="btn-team red" onclick="changeTeam('RED')">→ Перейти в красных</button>
+    </div>
+    <div class="team-panel blue">
+      <div class="team-title">
+        <span class="dot"></span>
+        Синяя команда
+        <span class="count" id="blue-count">(0)</span>
+      </div>
+      <div class="player-list" id="blue-players"></div>
+      <button class="btn-team blue" onclick="changeTeam('BLUE')">→ Перейти в синих</button>
+    </div>
+  </div>
+
+  <div class="lobby-footer">
+    <button class="btn-start" id="btn-start" onclick="startGame()" disabled>
+      Начать игру
+    </button>
+    <p class="lobby-hint" id="start-hint">Заполните обе команды для начала</p>
+  </div>
+</div>
+
+<!-- ══ GAME ══ -->
+<div id="screen-game" class="screen">
+  <div class="status-bar" id="status-bar">
+    <span class="status-turn" id="status-turn">Ожидание...</span>
+    <div class="score-display" id="score-display">
+      <span class="score-item"><span class="score-dot red"></span><span id="score-red">0</span></span>
+      <span class="score-item"><span class="score-dot blue"></span><span id="score-blue">0</span></span>
+    </div>
+  </div>
+
+  <div class="board-wrapper">
+    <div id="board"></div>
+  </div>
+
+  <div class="hand-section">
+    <div class="hand-label" id="hand-label">Ваши карты</div>
+    <div id="hand"></div>
+    <button class="btn-discard" id="btn-discard" onclick="discardCard()" disabled>
+      Сбросить мёртвую карту
+    </button>
+  </div>
+</div>
+
+<!-- ══ CHAT PANEL (floating) ══ -->
+<div id="chat-panel">
+  <div id="chat-header" onclick="toggleChat()">
+    <span id="chat-title">💬 Чат</span>
+    <span id="chat-badge" class="hidden">0</span>
+    <span id="chat-toggle-icon">▲</span>
+  </div>
+  <div id="chat-messages"></div>
+  <div id="chat-input-row">
+    <input type="text" id="chat-input" placeholder="Написать..." maxlength="200" onkeydown="chatKeydown(event)">
+
+    <button id="emoji-toggle" onclick="toggleEmojiPicker(event)">
+      <span class="dots-icon">•••</span>
+    </button>
+    <div id="emoji-picker" class="hidden">
+      <button onclick="sendReaction('🔥')">🔥</button>
+      <button onclick="sendReaction('😂')">😂</button>
+      <button onclick="sendReaction('😱')">😱</button>
+      <button onclick="sendReaction('👏')">👏</button>
+      <button onclick="sendReaction('🫠')">🫠</button>
+      <button onclick="sendReaction('😜')">😜</button>
+      <button onclick="sendReaction('🤫')">🤫</button>
+      <button onclick="sendReaction('☹️')">☹️</button>
+    </div>
+    <button id="chat-send" onclick="sendChat()">→</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ══════════════════════════════════════════════
+  //  BOARD LAYOUT (validated — each card exactly twice)
+  // ══════════════════════════════════════════════
+  const BOARD_LAYOUT = [
+    ["CORNER","SIX_DIAMONDS","SEVEN_DIAMONDS","EIGHT_DIAMONDS","NINE_DIAMONDS","TEN_DIAMONDS","QUEEN_DIAMONDS","KING_DIAMONDS","ACE_DIAMONDS","CORNER"],
+    ["FIVE_DIAMONDS","THREE_HEARTS","TWO_HEARTS","TWO_SPADES","THREE_SPADES","FOUR_SPADES","FIVE_SPADES","SIX_SPADES","SEVEN_SPADES","ACE_CLUBS"],
+    ["FOUR_DIAMONDS","FOUR_HEARTS","KING_DIAMONDS","ACE_DIAMONDS","ACE_HEARTS","KING_CLUBS","QUEEN_CLUBS","TEN_CLUBS","EIGHT_SPADES","KING_CLUBS"],
+    ["THREE_DIAMONDS","FIVE_HEARTS","QUEEN_DIAMONDS","TEN_HEARTS","NINE_HEARTS","EIGHT_HEARTS","SEVEN_HEARTS","NINE_CLUBS","NINE_SPADES","QUEEN_SPADES"],
+    ["TWO_DIAMONDS","SIX_HEARTS","TEN_DIAMONDS","QUEEN_HEARTS","THREE_HEARTS","TWO_HEARTS","FOUR_HEARTS","EIGHT_CLUBS","TEN_SPADES","TEN_CLUBS"],
+    ["ACE_SPADES","SEVEN_HEARTS","NINE_DIAMONDS","KING_HEARTS","ACE_CLUBS","FIVE_HEARTS","SIX_HEARTS","SEVEN_CLUBS","QUEEN_CLUBS","NINE_CLUBS"],
+    ["KING_SPADES","EIGHT_HEARTS","EIGHT_DIAMONDS","TWO_CLUBS","THREE_CLUBS","FOUR_CLUBS","FIVE_CLUBS","SIX_CLUBS","KING_SPADES","EIGHT_CLUBS"],
+    ["QUEEN_SPADES","NINE_HEARTS","SEVEN_DIAMONDS","SIX_DIAMONDS","FIVE_DIAMONDS","FOUR_DIAMONDS","THREE_DIAMONDS","TWO_DIAMONDS","ACE_SPADES","SEVEN_CLUBS"],
+    ["TEN_SPADES","TEN_HEARTS","QUEEN_HEARTS","KING_HEARTS","ACE_HEARTS","TWO_CLUBS","THREE_CLUBS","FOUR_CLUBS","FIVE_CLUBS","SIX_CLUBS"],
+    ["CORNER","NINE_SPADES","EIGHT_SPADES","SEVEN_SPADES","SIX_SPADES","FIVE_SPADES","FOUR_SPADES","THREE_SPADES","TWO_SPADES","CORNER"]
+  ];
+
+  const RANK_DISPLAY = {
+    TWO:'2', THREE:'3', FOUR:'4', FIVE:'5', SIX:'6',
+    SEVEN:'7', EIGHT:'8', NINE:'9', TEN:'10',
+    JACK_ONE_EYED:'J', JACK_TWO_EYED:'J',
+    QUEEN:'Q', KING:'K', ACE:'A'
+  };
+  const SUIT_SYMBOL = { CLUBS:'♣', DIAMONDS:'♦', HEARTS:'♥', SPADES:'♠' };
+  const IS_RED_SUIT = s => s === 'HEARTS' || s === 'DIAMONDS';
+  const CHAT_STORAGE_KEY = 'sequence_chat_history';
+
+  // ══════════════════════════════════════════════
+  //  STATE
+  // ══════════════════════════════════════════════
+  let stomp = null;
+  let myName = '';
+  let lobbyId = '';
+  let maxPlayers = 4;
+  let selectedIdx = null;
+  let currentHand = [];
+  let currentState = null;
+
+  // Generate default name
+  const adjectives = ['Cyber', 'Alpha', 'Quantum', 'Vortex', 'Pixel', 'Crypto', 'Nexus', 'Aero'];
+  const nouns = ['Runner', 'Knight', 'Hunter', 'Rider', 'Ghost', 'Blade', 'Master', 'Storm'];
+  document.getElementById('inp-name').value =
+      adjectives[Math.floor(Math.random()*adjectives.length)] + '_' +
+      nouns[Math.floor(Math.random()*nouns.length)] +
+      Math.floor(Math.random()*99);
+
+  // ══════════════════════════════════════════════
+  //  SCREENS
+  // ══════════════════════════════════════════════
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  // ══════════════════════════════════════════════
+  //  CONNECTION
+  // ══════════════════════════════════════════════
+  function connect() {
+    myName = document.getElementById('inp-name').value.trim();
+    lobbyId = document.getElementById('inp-lobby').value.trim();
+    maxPlayers = parseInt(document.getElementById('inp-mode').value);
+
+    if (!myName) { toast('Введите никнейм'); return; }
+    if (!lobbyId) { toast('Введите ID комнаты'); return; }
+
+    const btn = document.getElementById('btn-connect');
+    btn.disabled = true;
+    btn.textContent = 'Подключение...';
+
+    const serverUrl = window.location.hostname === 'localhost'
+        ? 'http://localhost:8080/ws'
+        : `${window.location.protocol}//${window.location.host}/ws`;
+    const socket = new SockJS(serverUrl);
+    stomp = Stomp.over(socket);
+    stomp.debug = null; // silence logs
+
+    stomp.connect({}, () => {
+      sessionStorage.setItem('sequence_player', JSON.stringify({
+        playerName: myName,
+        lobbyId: lobbyId,
+        maxPlayers: maxPlayers
+      }));
+
+
+      stomp.subscribe(`/topic/game/${lobbyId}/${myName}`, msg => {
+        const state = JSON.parse(msg.body);
+        handleState(state);
+      });
+
+      initChat();
+
+      stomp.send('/app/game/join', {}, JSON.stringify({
+        lobbyId, playerName: myName, maxPlayers
+      }));
+    }, err => {
+      toast('Ошибка подключения к серверу');
+      btn.disabled = false;
+      btn.textContent = 'Войти в лобби';
+    });
+  }
+
+  // ══════════════════════════════════════════════
+  //  LOBBY ACTIONS
+  // ══════════════════════════════════════════════
+  function changeTeam(team) {
+    if (!stomp) return;
+    stomp.send('/app/game/change-team', {}, JSON.stringify({
+      lobbyId, playerName: myName, team
+    }));
+  }
+
+  function startGame() {
+    if (!stomp) return;
+    stomp.send('/app/game/start', {}, JSON.stringify({
+      lobbyId, playerName: myName
+    }));
+  }
+
+  // ══════════════════════════════════════════════
+  //  GAME ACTIONS
+  // ══════════════════════════════════════════════
+  function makeMove(row, col) {
+    if (!currentState || currentState.status !== 'PLAYING') return;
+    if (currentState.currentPlayer !== myName) {
+      toast('Сейчас не ваш ход');
+      return;
+    }
+    if (selectedIdx === null) {
+      toast('Сначала выберите карту');
+      return;
+    }
+    const card = currentHand[selectedIdx];
+    stomp.send('/app/game/play', {}, JSON.stringify({
+      lobbyId,
+      player: myName,
+      row, col,
+      card: { suit: card.suit, rank: card.rank },
+      actionType: 'PLACE'
+    }));
+    playSound('snd-place');
+    selectedIdx = null;
+  }
+
+  function discardCard() {
+    if (selectedIdx === null) { toast('Выберите карту для сброса'); return; }
+    // Send discard if backend supports it, else just show info
+    toast('Функция сброса пока не реализована на сервере');
+  }
+
+  // ══════════════════════════════════════════════
+  //  STATE HANDLER
+  // ══════════════════════════════════════════════
+  function handleState(state) {
+    currentState = state;
+
+    if (state.status === 'WAITING') {
+      renderLobby(state);
+    } else {
+      showScreen('screen-game');
+      renderGame(state);
+    }
+  }
+
+  // ══════════════════════════════════════════════
+  //  LOBBY RENDER
+  // ══════════════════════════════════════════════
+  function renderLobby(state) {
+    showScreen('screen-lobby');
+
+    document.getElementById('lobby-title').textContent = `Комната: ${state.lobbyId}`;
+    const needed = state.maxPlayers / 2;
+
+    document.getElementById('lobby-subtitle').textContent =
+        `${state.redTeam.length + state.blueTeam.length} / ${state.maxPlayers} игроков`;
+
+    document.getElementById('red-count').textContent = `(${state.redTeam.length}/${needed})`;
+    document.getElementById('blue-count').textContent = `(${state.blueTeam.length}/${needed})`;
+
+    renderPlayerList('red-players', state.redTeam, 'red');
+    renderPlayerList('blue-players', state.blueTeam, 'blue');
+
+    const full = state.redTeam.length === needed && state.blueTeam.length === needed;
+    document.getElementById('btn-start').disabled = !full;
+    document.getElementById('start-hint').textContent =
+        full ? 'Можно начинать!' : `Нужно ещё ${needed*2 - state.redTeam.length - state.blueTeam.length} игроков`;
+  }
+
+  function renderPlayerList(containerId, players, color) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = players.map(p => `
+    <div class="player-tag ${p === myName ? 'me' : ''}">
+      <div class="avatar">${p.charAt(0).toUpperCase()}</div>
+      ${p}${p === myName ? ' (вы)' : ''}
+    </div>
+  `).join('');
+  }
+
+  // ══════════════════════════════════════════════
+  //  GAME RENDER
+  // ══════════════════════════════════════════════
+  function renderGame(state) {
+    // Status bar
+    const statusEl = document.getElementById('status-bar');
+    const turnEl = document.getElementById('status-turn');
+
+    if (state.status === 'FINISHED') {
+      statusEl.innerHTML = `<span class="status-winner">🏆 ${state.winner}</span>`;
+      playSound('snd-win');
+      clearSession();
+    } else {
+      const isMyTurn = state.currentPlayer === myName;
+      turnEl.className = 'status-turn' + (isMyTurn ? ' my-turn' : '');
+      turnEl.textContent = isMyTurn ? 'Ваш ход!' : `Ходит: ${state.currentPlayer}`;
+    }
+
+    renderBoard(state.chips);
+    renderHand(state.playerHand || []);
+
+    // Discard button active only on your turn with a card selected
+    document.getElementById('btn-discard').disabled =
+        state.currentPlayer !== myName || selectedIdx === null;
+  }
+
+  function renderBoard(chips) {
+    const boardEl = document.getElementById('board');
+    boardEl.innerHTML = '';
+
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 10; c++) {
+        const cell = document.createElement('div');
+        const cardStr = BOARD_LAYOUT[r][c];
+        const chipState = chips[r][c]; // EMPTY, RED, BLUE, CHAMELEON
+
+        if (cardStr === 'CORNER') {
+          cell.className = 'cell corner';
+          cell.innerHTML = `<span class="star-icon">★</span>`;
+        } else {
+          const [rank, suit] = cardStr.split('_');
+          const isRed = IS_RED_SUIT(suit);
+          const occupied = chipState === 'RED' || chipState === 'BLUE';
+
+          cell.className = 'cell' + (occupied ? ' occupied' : '');
+
+          // Highlight cells matching selected card
+          if (selectedIdx !== null && currentHand[selectedIdx]) {
+            const sel = currentHand[selectedIdx];
+            const selRank = sel.rank;
+            const selSuit = sel.suit;
+            if (selRank === 'JACK_TWO_EYED' && !occupied) {
+              // Two-eyed jack: highlight all empty cells
+              cell.classList.add('highlight');
+            } else if (selRank === 'JACK_ONE_EYED') {
+              // One-eyed jack: highlight only opponent chips (not yours, not empty, not corner)
+              const myColor = currentState?.redTeam?.includes(myName) ? 'RED' : 'BLUE';
+              if ((chipState === 'RED' || chipState === 'BLUE') && chipState !== myColor) {
+                cell.classList.add('highlight');
+              }
+            } else if (rank === selRank && suit === selSuit && !occupied) {
+              // Normal card: highlight only the exact rank+suit match that is empty
+              cell.classList.add('highlight');
+            }
+          }
+
+          cell.innerHTML = `
+          <span class="card-rank">${RANK_DISPLAY[rank] || rank}</span>
+          <span class="card-suit ${isRed ? 'red' : 'black'}">${SUIT_SYMBOL[suit] || ''}</span>
+        `;
+
+          if (chipState === 'RED' || chipState === 'BLUE') {
+            cell.classList.add('has-chip');
+            const chip = document.createElement('div');
+            chip.className = `chip ${chipState}`;
+            cell.appendChild(chip);
+          }
+
+          const row = r, col = c;
+          cell.addEventListener('click', () => makeMove(row, col));
+        }
+
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+
+  function renderHand(hand) {
+    currentHand = hand;
+    if (selectedIdx !== null && selectedIdx >= hand.length) {
+      selectedIdx = null;
+    }
+    const handEl = document.getElementById('hand');
+    handEl.innerHTML = '';
+
+    hand.forEach((card, idx) => {
+      const el = document.createElement('div');
+      const isJackOne = card.rank === 'JACK_ONE_EYED';
+      const isJackTwo = card.rank === 'JACK_TWO_EYED';
+      const isJack = isJackOne || isJackTwo;
+      const isRed = IS_RED_SUIT(card.suit);
+
+      el.className = `card-in-hand${idx === selectedIdx ? ' selected' : ''}${isJack ? ' jack-card' : ''}`;
+
+      if (isJack) {
+        el.innerHTML = `
+        <span class="rank">${isJackOne ? 'J' : 'J'}</span>
+        <span class="suit-sym ${isRed ? 'red' : 'black'}">${SUIT_SYMBOL[card.suit]}</span>
+        <span class="jack-label">${isJackOne ? '👁 Убрать' : '★ Везде'}</span>
+      `;
+      } else {
+        el.innerHTML = `
+        <span class="rank">${RANK_DISPLAY[card.rank] || card.rank}</span>
+        <span class="suit-sym ${isRed ? 'red' : 'black'}">${SUIT_SYMBOL[card.suit]}</span>
+      `;
+      }
+
+      el.addEventListener('click', () => {
+        selectedIdx = (selectedIdx === idx) ? null : idx;
+        // Re-render board to update highlights, re-render hand to update selection
+        if (currentState) {
+          renderBoard(currentState.chips);
+          renderHand(currentHand);
+        }
+        // Update discard button
+        document.getElementById('btn-discard').disabled =
+            currentState?.currentPlayer !== myName || selectedIdx === null;
+      });
+
+      handEl.appendChild(el);
+    });
+
+    const label = document.getElementById('hand-label');
+    label.textContent = `Ваши карты (${hand.length})`;
+  }
+
+  // ══════════════════════════════════════════════
+  //  TOAST
+  // ══════════════════════════════════════════════
+  let toastTimer = null;
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  // ══════════════════════════════════════════════
+  //  CHAT
+  // ══════════════════════════════════════════════
+  let chatOpen = true;
+  let unreadCount = 0;
+
+  const picker = document.getElementById("emoji-picker");
+  const toggle = document.getElementById("emoji-toggle");
+
+  function initChat() {
+    stomp.subscribe(`/topic/messages/${lobbyId}`, msg => {
+      const data = JSON.parse(msg.body);
+
+      appendChatMessage(
+          data.sender,
+          data.text,
+          'user'
+      );
+    });
+
+    document.getElementById('chat-panel').classList.add('visible');
+    restoreChatHistory();
+    appendChatMessage(
+        null,
+        `Подключено к комнате ${lobbyId}`,
+        'system',
+        true
+    );
+  }
+
+  function toggleChat() {
+    const panel = document.getElementById('chat-panel');
+    chatOpen = !chatOpen;
+    panel.classList.toggle('collapsed', !chatOpen);
+    if (chatOpen) {
+      unreadCount = 0;
+      document.getElementById('chat-badge').classList.add('hidden');
+      scrollChat();
+    }
+  }
+
+  function appendChatMessage(sender, text, type, restoring = false) {
+    const msgs = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    const isMe = sender === myName;
+    div.className = `chat-msg${isMe ? ' mine' : ''}${type === 'system' ? ' system' : ''}`;
+    div.innerHTML = `
+    <span class="msg-sender">${sender || ''}</span>
+    <span class="msg-text">${escapeHtml(text)}</span>
+  `;
+    msgs.appendChild(div);
+    if (!restoring) {
+      saveChatMessage({
+        sender,
+        text,
+        type
+      });
+    }
+    scrollChat();
+
+    // Badge for unread when chat is collapsed
+    if (!chatOpen && type !== 'system' && !isMe) {
+      unreadCount++;
+      const badge = document.getElementById('chat-badge');
+      badge.textContent = unreadCount;
+      badge.classList.remove('hidden');
+    }
+  }
+
+  function scrollChat() {
+    const msgs = document.getElementById('chat-messages');
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function sendChat() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text || !stomp) return;
+    stomp.send(`/app/chat/${lobbyId}`, {}, JSON.stringify({
+      sender: myName,
+      text: text,
+      lobbyId: lobbyId
+    }));
+    input.value = '';
+  }
+
+  function chatKeydown(e) {
+    if (e.key === 'Enter') sendChat();
+  }
+
+  function saveChatMessage(message) {
+    const key = `${CHAT_STORAGE_KEY}_${lobbyId}`;
+
+    const messages = JSON.parse(sessionStorage.getItem(key) || '[]');
+
+    messages.push(message);
+
+    // limit history
+    if (messages.length > 100) {
+      messages.shift();
+    }
+
+    sessionStorage.setItem(key, JSON.stringify(messages));
+  }
+
+  function sendReaction(emoji) {
+    if (!stomp) return;
+
+    stomp.send(`/app/chat/${lobbyId}`, {}, JSON.stringify({
+      sender: myName,
+      text: emoji,
+      lobbyId: lobbyId
+    }));
+
+    const currentPicker = document.getElementById("emoji-picker");
+    if (currentPicker) {
+      currentPicker.classList.add("hidden");
+    }
+  }
+
+  function toggleEmojiPicker(e) {
+    e.stopPropagation();
+    const currentPicker = document.getElementById("emoji-picker");
+    if (currentPicker) {
+      currentPicker.classList.toggle("hidden");
+    }
+  }
+
+  function clearSession() {
+    sessionStorage.removeItem('sequence_player');
+    sessionStorage.removeItem(`${CHAT_STORAGE_KEY}_${lobbyId}`);
+  }
+
+  function restoreChatHistory() {
+    const key = `${CHAT_STORAGE_KEY}_${lobbyId}`;
+    const messages = JSON.parse(sessionStorage.getItem(key) || '[]');
+    messages.forEach(msg => {
+      appendChatMessage(
+          msg.sender,
+          msg.text,
+          msg.type,
+          true
+      );
+    });
+  }
+
+  function playSound(id) {
+    const snd = document.getElementById(id);
+    if (!snd) return;
+    snd.currentTime = 0;
+    snd.play().catch(() => {});
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  }
+
+  document.addEventListener("click", function (e) {
+    const currentPicker = document.getElementById("emoji-picker");
+    const currentToggle = document.getElementById("emoji-toggle");
+
+    if (currentPicker && currentToggle) {
+      if (!currentToggle.contains(e.target) && !currentPicker.contains(e.target)) {
+        currentPicker.classList.add("hidden");
+      }
+    }
+  });
+
+  const p = picker || document.getElementById("emoji-picker");
+  if (p) {
+    p.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+  }
+
+  window.addEventListener('load', () => {
+    const saved = sessionStorage.getItem('sequence_player');
+
+    if (!saved) return;
+
+    try {
+      const data = JSON.parse(saved);
+
+      document.getElementById('inp-name').value = data.playerName;
+      document.getElementById('inp-lobby').value = data.lobbyId;
+      document.getElementById('inp-mode').value = data.maxPlayers;
+
+      connect();
+    } catch (e) {
+      console.error('Reconnect failed', e);
+      sessionStorage.removeItem('sequence_player');
+    }
+  });
+
+  window.addEventListener('beforeunload', () => {
+    if (stomp) {
+      stomp.disconnect();
+    }
+  });
+</script>
+
+<audio id="snd-win" src="/sounds/win.mp3"></audio>
+</body>
+</html>
